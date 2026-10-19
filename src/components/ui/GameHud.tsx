@@ -8,7 +8,6 @@ import {
   VolumeX,
   LogOut,
   Play,
-  Square,
   ShieldAlert,
 } from 'lucide-react';
 import { MatchState } from '../../types/game';
@@ -41,7 +40,6 @@ export const GameHud: React.FC<GameHudProps> = ({
   const p1 = state.players[0];
   const p2 = state.players[1];
 
-  // In local mode, you alternate turns. In online mode, only currentTurnPlayerId matches your ID
   const isMyTurn = isLocalMode
     ? true
     : Boolean(myPlayerId && state.currentTurnPlayerId === myPlayerId);
@@ -50,7 +48,6 @@ export const GameHud: React.FC<GameHudProps> = ({
   const waterPercent = Math.max(0, Math.min(100, state.waterLevel));
   const isNearOverflow = waterPercent >= 80;
 
-  // Fade out round start banner after 2 seconds
   useEffect(() => {
     setRoundBannerVisible(true);
     const timer = setTimeout(() => {
@@ -59,24 +56,25 @@ export const GameHud: React.FC<GameHudProps> = ({
     return () => clearTimeout(timer);
   }, [state.roundNumber]);
 
-  // Clean, deterministic tap control (no pointerdown/click double-triggers)
-  const handleTapButtonClick = () => {
-    if (!isMyTurn || state.status !== 'playing' || state.isOverflowed) return;
+  // دوال التحكم بالضغط المستمر (Hold to pour, Release to stop)
+  const handlePressStart = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    if (!isMyTurn || state.status !== 'playing' || state.isOverflowed || state.isTapOpen) return;
+    onStartTap();
+  };
 
-    if (state.isTapOpen) {
-      onStopTap();
-    } else {
-      onStartTap();
-    }
+  const handlePressEnd = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    if (!isMyTurn || state.status !== 'playing' || !state.isTapOpen) return;
+    onStopTap();
   };
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col justify-between pointer-events-none select-none p-3 sm:p-4">
       {/* ======================================================== */}
-      {/* 1. SLIM FLOATING TOP BAR (Names + Score + Single Water Level) */}
+      {/* 1. SLIM FLOATING TOP BAR */}
       {/* ======================================================== */}
       <div className="w-full max-w-lg mx-auto pointer-events-auto flex items-center justify-between gap-2 bg-slate-900/85 backdrop-blur-md border border-slate-800/80 rounded-full px-3 py-1.5 shadow-lg">
-        {/* Player 1 Card */}
         <div
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all text-xs font-bold ${
             state.currentTurnPlayerId === p1?.id
@@ -92,7 +90,6 @@ export const GameHud: React.FC<GameHudProps> = ({
           </span>
         </div>
 
-        {/* Single Sleek Water Indicator */}
         <div className="flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950/70 border border-slate-800">
           <Droplet
             className={`w-3.5 h-3.5 transition-colors ${
@@ -111,7 +108,6 @@ export const GameHud: React.FC<GameHudProps> = ({
           )}
         </div>
 
-        {/* Player 2 Card */}
         <div
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all text-xs font-bold ${
             state.currentTurnPlayerId === p2?.id
@@ -127,7 +123,6 @@ export const GameHud: React.FC<GameHudProps> = ({
           </span>
         </div>
 
-        {/* Options / Secondary Drawer Toggle Button */}
         <button
           onClick={() => {
             sound.playClick();
@@ -141,7 +136,7 @@ export const GameHud: React.FC<GameHudProps> = ({
       </div>
 
       {/* ======================================================== */}
-      {/* 2. TRANSIENT FLOATING ALERTS (Brief and auto-fading) */}
+      {/* 2. TRANSIENT FLOATING ALERTS */}
       {/* ======================================================== */}
       <div className="pointer-events-none flex flex-col items-center justify-center my-auto">
         {roundBannerVisible && (
@@ -152,10 +147,9 @@ export const GameHud: React.FC<GameHudProps> = ({
       </div>
 
       {/* ======================================================== */}
-      {/* 3. BOTTOM CONTROL AREA (Turn Indicator + Tap Button) */}
+      {/* 3. BOTTOM CONTROL AREA (Hold-to-Pour Button) */}
       {/* ======================================================== */}
       <div className="w-full max-w-sm mx-auto pointer-events-auto space-y-2 pb-2">
-        {/* Short Status Message */}
         <div className="text-center">
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-sm transition-all ${
@@ -170,15 +164,15 @@ export const GameHud: React.FC<GameHudProps> = ({
               state.isTapOpen ? (
                 <>
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                  <span>الماء يتدفق الآن! انقر للإيقاف</span>
+                  <span>الماء يتدفق! ارفع إصبعك للإيقاف والتمرير</span>
                 </>
               ) : (
                 <>
                   <span className="w-2 h-2 rounded-full bg-cyan-400" />
                   <span>
                     {isLocalMode
-                      ? `دورك الآن (${activePlayer?.name})`
-                      : 'دورك الآن'}
+                      ? `دورك الآن (${activePlayer?.name}) - اضغط باستمرار`
+                      : 'دورك الآن - اضغط باستمرار للصب'}
                   </span>
                 </>
               )
@@ -191,11 +185,16 @@ export const GameHud: React.FC<GameHudProps> = ({
           </span>
         </div>
 
-        {/* Single Tap Action Button */}
+        {/* زر الضغط المستمر (Hold to pour / Release to stop) */}
         <button
-          onClick={handleTapButtonClick}
+          onTouchStart={handlePressStart}
+          onTouchEnd={handlePressEnd}
+          onTouchCancel={handlePressEnd}
+          onMouseDown={handlePressStart}
+          onMouseUp={handlePressEnd}
+          onMouseLeave={handlePressEnd}
           disabled={!isMyTurn || state.status !== 'playing' || state.isOverflowed}
-          className={`w-full py-4 px-6 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 transition-all shadow-xl active:scale-[0.98] cursor-pointer ${
+          className={`w-full py-4 px-6 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 transition-all shadow-xl active:scale-[0.98] cursor-pointer touch-none ${
             !isMyTurn
               ? 'bg-slate-900/60 border border-slate-800 text-slate-500 cursor-not-allowed opacity-60'
               : state.isTapOpen
@@ -205,14 +204,14 @@ export const GameHud: React.FC<GameHudProps> = ({
         >
           {state.isTapOpen ? (
             <>
-              <Square className="w-5 h-5 fill-current" />
-              <span>إيقاف الحنفية وتمرير الدور</span>
+              <ShieldAlert className="w-5 h-5 animate-spin" />
+              <span>أفلت إصبعك الآن للإيقاف!</span>
             </>
           ) : (
             <>
               <Play className="w-5 h-5 fill-current" />
               <span>
-                {isMyTurn ? 'تشغيل الحنفية' : 'انتظر دور الخصم'}
+                {isMyTurn ? 'اضغط باستمـــرار للصب' : 'انتظر دور الخصم'}
               </span>
             </>
           )}
@@ -220,7 +219,7 @@ export const GameHud: React.FC<GameHudProps> = ({
       </div>
 
       {/* ======================================================== */}
-      {/* 4. SECONDARY INFO DRAWER (Clean modal when opened) */}
+      {/* 4. SECONDARY INFO DRAWER */}
       {/* ======================================================== */}
       {showDrawer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm pointer-events-auto">
@@ -251,7 +250,6 @@ export const GameHud: React.FC<GameHudProps> = ({
                 <span className="font-bold text-white">{state.roundNumber}</span>
               </div>
 
-              {/* Sound Toggle */}
               <button
                 onClick={() => {
                   sound.playClick();
@@ -268,7 +266,6 @@ export const GameHud: React.FC<GameHudProps> = ({
                 </span>
               </button>
 
-              {/* Surrender / Leave */}
               <button
                 onClick={() => {
                   sound.playClick();
