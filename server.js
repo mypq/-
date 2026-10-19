@@ -3,7 +3,7 @@ import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 
-// معالجة الأخطاء غير المتوقعة لمنع انهيار السيرفر بالكامل
+// معالجة الأخطاء غير المتوقعة لمنع انهيار السيرفر
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception safely handled:', err);
 });
@@ -16,7 +16,6 @@ const __dirname = path.resolve();
 const app = express();
 app.use(express.json());
 
-// مسار فحص الصحة لاستضافة Abasthan
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: Date.now() });
 });
@@ -145,8 +144,9 @@ function startRound(room) {
   if (!room.state.currentTurnPlayerId || room.state.roundNumber === 1) {
     room.state.currentTurnPlayerId = room.players[0].id;
   } else {
-    const otherPlayer = room.players.find(p => p.id !== room.state.currentTurnPlayerId);
-    room.state.currentTurnPlayerId = otherPlayer ? otherPlayer.id : room.players[0].id;
+    const currentIndex = room.players.findIndex(p => p.id === room.state.currentTurnPlayerId);
+    const nextIndex = (currentIndex + 1) % room.players.length;
+    room.state.currentTurnPlayerId = room.players[nextIndex].id;
   }
 
   for (const p of room.players) {
@@ -193,7 +193,6 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const socketMap = new WeakMap();
 
-// إرسال Ping دوري لمنع انقطاع اتصال السيرفر مع Cloudflare
 const heartbeatInterval = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.readyState === WebSocket.OPEN) {
@@ -322,17 +321,30 @@ wss.on('connection', (ws) => {
       if (!room) return;
 
       if (type === 'tap_start') {
-        if (room.status !== 'playing' || room.state.currentTurnPlayerId !== info.playerId || room.state.isTapOpen) return;
+        if (room.status !== 'playing') return;
+        // السماح بالضغط إذا كان المعرف يطابق اللاعب الذي عليه الدور
+        if (room.state.currentTurnPlayerId !== info.playerId) return;
+        if (room.state.isTapOpen) return;
+
         room.state.isTapOpen = true;
         room.state.tapOpenedAt = Date.now();
         room.state.waterAtTapOpen = room.state.waterLevel;
-        broadcastToRoom(room, { type: 'tap_started', playerId: info.playerId, waterLevel: room.state.waterLevel });
+
+        broadcastToRoom(room, {
+          type: 'tap_started',
+          playerId: info.playerId,
+          waterLevel: room.state.waterLevel,
+          state: sanitizeRoomState(room)
+        });
         startRoomWaterTick(room);
         return;
       }
 
       if (type === 'tap_stop') {
-        if (room.status !== 'playing' || room.state.currentTurnPlayerId !== info.playerId || !room.state.isTapOpen) return;
+        if (room.status !== 'playing') return;
+        if (room.state.currentTurnPlayerId !== info.playerId) return;
+        if (!room.state.isTapOpen) return;
+
         stopRoomTick(room);
         const now = Date.now();
         const elapsed = (now - (room.state.tapOpenedAt || now)) / 1000;
@@ -340,14 +352,17 @@ wss.on('connection', (ws) => {
         room.state.isTapOpen = false;
         room.state.tapOpenedAt = null;
 
-        const opponent = room.players.find(p => p.id !== info.playerId);
-        if (opponent) room.state.currentTurnPlayerId = opponent.id;
+        // تبديل الدور بشكل حتمي ومباشر
+        const currentIndex = room.players.findIndex(p => p.id === info.playerId);
+        const nextIndex = (currentIndex + 1) % room.players.length;
+        room.state.currentTurnPlayerId = room.players[nextIndex].id;
 
         broadcastToRoom(room, {
           type: 'tap_stopped',
           playerId: info.playerId,
           nextTurnPlayerId: room.state.currentTurnPlayerId,
           waterLevel: room.state.waterLevel,
+          state: sanitizeRoomState(room)
         });
         return;
       }
