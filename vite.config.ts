@@ -12,10 +12,18 @@ export default defineConfig(() => {
       },
     },
     server: {
+      host: '0.0.0.5', // أو true حسب دعم النظام، سنتركها true
       host: true,
+      port: 3000, // بعض المنصات تفضل بورت محدد مثل 3000 أو تركها افتراضي
+      strictPort: true,
       allowedHosts: true,
-      hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      cors: true,
+      hmr: {
+        // اجبار الـ HMR على العمل عبر بروتوكول الأمان والمنطاق الصحيح
+        protocol: 'wss',
+        host: 'yogurt-paltry-tiger.abasthan.app',
+        clientPort: 443
+      },
     },
   };
 });
