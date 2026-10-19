@@ -236,121 +236,125 @@ export default function App() {
   const isCriticalTension = matchState.waterLevel > 75;
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none text-right">
+    <div className="relative w-screen h-[100dvh] overflow-hidden bg-slate-950 font-sans select-none text-right flex flex-col justify-between">
       {/* 3D Realistic Kitchen, Chrome Faucet, and Glass Scene */}
-      <KitchenScene
-        waterLevel={matchState.waterLevel}
-        isTapOpen={matchState.isTapOpen}
-        isOverflowed={matchState.isOverflowed}
-        quality={quality}
-        isCriticalTension={isCriticalTension}
-      />
-
-      {/* 1. Welcome / Name prompt on first entry */}
-      {!isNameSet && (
-        <WelcomeModal onSaveName={handleSavePlayerName} initialName={playerName} />
-      )}
-
-      {/* 2. Main Menu */}
-      {isNameSet && mode === 'menu' && (
-        <MainMenu
-          playerName={playerName}
-          onSelectMode={(selected) => {
-            if (selected === 'local') {
-              setShowLocalSetup(true);
-            } else if (selected === 'create_room') {
-              handleCreateOnlineRoom();
-            } else if (selected === 'join_room' || selected === 'online_lobby') {
-              setShowJoinModal(true);
-            } else if (selected === 'settings') {
-              setShowSettings(true);
-            } else if (selected === 'how_to_play') {
-              setShowHowToPlay(true);
-            }
-          }}
-          onEditName={() => setIsNameSet(false)}
-          isMuted={soundSettings.masterMute}
-          onToggleMute={handleToggleMute}
-        />
-      )}
-
-      {/* 3. Local Setup Modal */}
-      {showLocalSetup && (
-        <LocalSetupModal
-          p1Name={playerName}
-          onStart={handleStartLocalGame}
-          onBack={() => setShowLocalSetup(false)}
-        />
-      )}
-
-      {/* 4. Join Room Modal */}
-      {showJoinModal && (
-        <JoinRoomModal
-          onJoinCode={handleJoinOnlineCode}
-          onBack={() => {
-            setShowJoinModal(false);
-            setOnlineError(null);
-          }}
-          error={onlineError}
-        />
-      )}
-
-      {/* 5. Online Waiting Room Lobby */}
-      {mode === 'online_room' && (
-        <LobbyRoom
-          roomCode={onlineRoomCode || onlineEngineRef.current?.getRoomCode() || '...'}
-          state={matchState}
-          myPlayerId={myOnlinePlayerId}
-          onLeaveRoom={handleLeaveToMenu}
-          countdown={onlineCountdown}
-        />
-      )}
-
-      {/* 6. Active Gameplay HUD (Top Cards & Collapsible Bottom Dock) */}
-      {isGameActive && (
-        <GameHud
-          state={matchState}
-          myPlayerId={myOnlinePlayerId}
-          isLocalMode={mode === 'local'}
-          onStartTap={handleStartTap}
-          onStopTap={handleStopTap}
-          onLeaveGame={handleLeaveToMenu}
-          isMuted={soundSettings.masterMute}
-          onToggleMute={handleToggleMute}
-        />
-      )}
-
-      {/* 7. Game Over Screen (Shown with dramatic delay to reveal 3D water spill) */}
-      {isGameActive && showGameOverModal && (
-        <GameOverModal
-          state={matchState}
-          myPlayerId={myOnlinePlayerId}
-          isLocalMode={mode === 'local'}
-          onRematch={handleRematch}
-          onBackToMenu={handleLeaveToMenu}
-        />
-      )}
-
-      {/* 8. Settings Modal */}
-      {showSettings && (
-        <SettingsModal
-          playerName={playerName}
-          onUpdateName={(name) => {
-            setPlayerName(name);
-            localStorage.setItem('water_challenge_player_name', name);
-          }}
-          soundSettings={soundSettings}
-          onUpdateSound={handleUpdateSound}
+      <div className="absolute inset-0 z-0">
+        <KitchenScene
+          waterLevel={matchState.waterLevel}
+          isTapOpen={matchState.isTapOpen}
+          isOverflowed={matchState.isOverflowed}
           quality={quality}
-          onUpdateQuality={handleUpdateQuality}
-          onClose={() => setShowSettings(false)}
+          isCriticalTension={isCriticalTension}
         />
-      )}
+      </div>
 
-      {/* 9. How to Play Modal */}
-      {showHowToPlay && (
-        <HowToPlayModal onClose={() => setShowHowToPlay(false)} />
-      )}
+      <div className="relative z-10 w-full h-full flex flex-col justify-between overflow-y-auto">
+        {/* 1. Welcome / Name prompt on first entry */}
+        {!isNameSet && (
+          <WelcomeModal onSaveName={handleSavePlayerName} initialName={playerName} />
+        )}
+
+        {/* 2. Main Menu */}
+        {isNameSet && mode === 'menu' && (
+          <MainMenu
+            playerName={playerName}
+            onSelectMode={(selected) => {
+              if (selected === 'local') {
+                setShowLocalSetup(true);
+              } else if (selected === 'create_room') {
+                handleCreateOnlineRoom();
+              } else if (selected === 'join_room' || selected === 'online_lobby') {
+                setShowJoinModal(true);
+              } else if (selected === 'settings') {
+                setShowSettings(true);
+              } else if (selected === 'how_to_play') {
+                setShowHowToPlay(true);
+              }
+            }}
+            onEditName={() => setIsNameSet(false)}
+            isMuted={soundSettings.masterMute}
+            onToggleMute={handleToggleMute}
+          />
+        )}
+
+        {/* 3. Local Setup Modal */}
+        {showLocalSetup && (
+          <LocalSetupModal
+            p1Name={playerName}
+            onStart={handleStartLocalGame}
+            onBack={() => setShowLocalSetup(false)}
+          />
+        )}
+
+        {/* 4. Join Room Modal */}
+        {showJoinModal && (
+          <JoinRoomModal
+            onJoinCode={handleJoinOnlineCode}
+            onBack={() => {
+              setShowJoinModal(false);
+              setOnlineError(null);
+            }}
+            error={onlineError}
+          />
+        )}
+
+        {/* 5. Online Waiting Room Lobby */}
+        {mode === 'online_room' && (
+          <LobbyRoom
+            roomCode={onlineRoomCode || onlineEngineRef.current?.getRoomCode() || '...'}
+            state={matchState}
+            myPlayerId={myOnlinePlayerId}
+            onLeaveRoom={handleLeaveToMenu}
+            countdown={onlineCountdown}
+          />
+        )}
+
+        {/* 6. Active Gameplay HUD (Top Cards & Collapsible Bottom Dock) */}
+        {isGameActive && (
+          <GameHud
+            state={matchState}
+            myPlayerId={myOnlinePlayerId}
+            isLocalMode={mode === 'local'}
+            onStartTap={handleStartTap}
+            onStopTap={handleStopTap}
+            onLeaveGame={handleLeaveToMenu}
+            isMuted={soundSettings.masterMute}
+            onToggleMute={handleToggleMute}
+          />
+        )}
+
+        {/* 7. Game Over Screen (Shown with dramatic delay to reveal 3D water spill) */}
+        {isGameActive && showGameOverModal && (
+          <GameOverModal
+            state={matchState}
+            myPlayerId={myOnlinePlayerId}
+            isLocalMode={mode === 'local'}
+            onRematch={handleRematch}
+            onBackToMenu={handleLeaveToMenu}
+          />
+        )}
+
+        {/* 8. Settings Modal */}
+        {showSettings && (
+          <SettingsModal
+            playerName={playerName}
+            onUpdateName={(name) => {
+              setPlayerName(name);
+              localStorage.setItem('water_challenge_player_name', name);
+            }}
+            soundSettings={soundSettings}
+            onUpdateSound={handleUpdateSound}
+            quality={quality}
+            onUpdateQuality={handleUpdateQuality}
+            onClose={() => setShowSettings(false)}
+          />
+        )}
+
+        {/* 9. How to Play Modal */}
+        {showHowToPlay && (
+          <HowToPlayModal onClose={() => setShowHowToPlay(false)} />
+        )}
+      </div>
     </div>
   );
 }
