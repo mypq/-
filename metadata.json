@@ -1,0 +1,6 @@
+{
+  "name": "تحدي الكوب - Water Challenge",
+  "description": "لعبة تنافسية واقعية ثلاثية الأبعاد بين لاعبين لتحدي تعبئة كوب الماء والسيطرة على الحنفية دون فيضان الكوب مع لعب محلي وأونلاين.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
