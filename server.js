@@ -3,10 +3,23 @@ import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 
-const __dirname = path.resolve();
+// معالجة الأخطاء غير المتوقعة لمنع انهيار السيرفر بالكامل
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception safely handled:', err);
+});
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection safely handled at:', promise, 'reason:', reason);
+});
+
+const __dirname = path.resolve();
 const app = express();
 app.use(express.json());
+
+// مسار فحص الصحة لاستضافة Abasthan
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: Date.now() });
+});
 
 const rooms = new Map();
 
@@ -20,16 +33,21 @@ function generateRoomCode() {
 }
 
 function broadcastToRoom(room, message) {
+  if (!room || !room.players) return;
   const data = JSON.stringify(message);
   for (const player of room.players) {
-    if (player.ws.readyState === WebSocket.OPEN) {
-      player.ws.send(data);
+    try {
+      if (player.ws && player.ws.readyState === WebSocket.OPEN) {
+        player.ws.send(data);
+      }
+    } catch (err) {
+      console.error('Error broadcasting message:', err);
     }
   }
 }
 
 function stopRoomTick(room) {
-  if (room.tickTimer) {
+  if (room && room.tickTimer) {
     clearInterval(room.tickTimer);
     room.tickTimer = undefined;
   }
@@ -38,47 +56,52 @@ function stopRoomTick(room) {
 function startRoomWaterTick(room) {
   stopRoomTick(room);
   room.tickTimer = setInterval(() => {
-    if (room.status !== 'playing' || !room.state.isTapOpen || !room.state.tapOpenedAt) {
+    try {
+      if (room.status !== 'playing' || !room.state.isTapOpen || !room.state.tapOpenedAt) {
+        stopRoomTick(room);
+        return;
+      }
+
+      const now = Date.now();
+      const elapsedSeconds = (now - room.state.tapOpenedAt) / 1000;
+      const currentWater = room.state.waterAtTapOpen + elapsedSeconds * room.state.flowRate;
+
+      if (currentWater >= 100) {
+        room.state.waterLevel = 100;
+        room.state.isTapOpen = false;
+        room.state.tapOpenedAt = null;
+        room.state.isOverflowed = true;
+        room.status = 'game_over';
+        stopRoomTick(room);
+
+        const loser = room.players.find(p => p.id === room.state.currentTurnPlayerId);
+        const winner = room.players.find(p => p.id !== room.state.currentTurnPlayerId);
+
+        room.state.loserPlayerId = loser ? loser.id : null;
+        room.state.winnerPlayerId = winner ? winner.id : null;
+        if (winner) winner.score += 1;
+
+        broadcastToRoom(room, {
+          type: 'game_over',
+          reason: 'overflow',
+          state: sanitizeRoomState(room),
+          winnerName: winner ? winner.name : 'اللاعب الفائز',
+          loserName: loser ? loser.name : 'اللاعب الخاسر',
+        });
+      } else {
+        room.state.waterLevel = Number(currentWater.toFixed(2));
+        broadcastToRoom(room, {
+          type: 'water_tick',
+          waterLevel: room.state.waterLevel,
+          isTapOpen: true,
+          currentTurnPlayerId: room.state.currentTurnPlayerId,
+        });
+      }
+    } catch (err) {
+      console.error('Error in room water tick:', err);
       stopRoomTick(room);
-      return;
     }
-
-    const now = Date.now();
-    const elapsedSeconds = (now - room.state.tapOpenedAt) / 1000;
-    const currentWater = room.state.waterAtTapOpen + elapsedSeconds * room.state.flowRate;
-
-    if (currentWater >= 100) {
-      room.state.waterLevel = 100;
-      room.state.isTapOpen = false;
-      room.state.tapOpenedAt = null;
-      room.state.isOverflowed = true;
-      room.status = 'game_over';
-      stopRoomTick(room);
-
-      const loser = room.players.find(p => p.id === room.state.currentTurnPlayerId);
-      const winner = room.players.find(p => p.id !== room.state.currentTurnPlayerId);
-
-      room.state.loserPlayerId = loser ? loser.id : null;
-      room.state.winnerPlayerId = winner ? winner.id : null;
-      if (winner) winner.score += 1;
-
-      broadcastToRoom(room, {
-        type: 'game_over',
-        reason: 'overflow',
-        state: sanitizeRoomState(room),
-        winnerName: winner ? winner.name : 'اللاعب الفائز',
-        loserName: loser ? loser.name : 'اللاعب الخاسر',
-      });
-    } else {
-      room.state.waterLevel = Number(currentWater.toFixed(2));
-      broadcastToRoom(room, {
-        type: 'water_tick',
-        waterLevel: room.state.waterLevel,
-        isTapOpen: true,
-        currentTurnPlayerId: room.state.currentTurnPlayerId,
-      });
-    }
-  }, 40);
+  }, 50);
 }
 
 function sanitizeRoomState(room) {
@@ -147,16 +170,21 @@ function triggerCountdown(room) {
   });
 
   const interval = setInterval(() => {
-    count--;
-    room.state.countdown = count;
-    if (count > 0) {
-      broadcastToRoom(room, {
-        type: 'countdown_tick',
-        countdown: count,
-      });
-    } else {
+    try {
+      count--;
+      room.state.countdown = count;
+      if (count > 0) {
+        broadcastToRoom(room, {
+          type: 'countdown_tick',
+          countdown: count,
+        });
+      } else {
+        clearInterval(interval);
+        startRound(room);
+      }
+    } catch (err) {
+      console.error('Error in countdown tick:', err);
       clearInterval(interval);
-      startRound(room);
     }
   }, 1000);
 }
@@ -164,6 +192,21 @@ function triggerCountdown(room) {
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const socketMap = new WeakMap();
+
+// إرسال Ping دوري لمنع انقطاع اتصال السيرفر مع Cloudflare
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.ping();
+      } catch (e) {}
+    }
+  });
+}, 25000);
+
+wss.on('close', () => {
+  clearInterval(heartbeatInterval);
+});
 
 wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
@@ -327,32 +370,36 @@ wss.on('connection', (ws) => {
         return;
       }
     } catch (err) {
-      console.error('Error handling WS message:', err);
+      console.error('Error handling WS message safely:', err);
     }
   });
 
   ws.on('close', () => handlePlayerDisconnect(ws));
-  ws.on('error', (err) => console.warn('WS error:', err.message));
+  ws.on('error', (err) => console.warn('WS error safely handled:', err.message));
 });
 
 function handlePlayerDisconnect(ws) {
-  const info = socketMap.get(ws);
-  if (!info) return;
-  const room = rooms.get(info.roomCode);
-  if (!room) return;
-  stopRoomTick(room);
-  const leavingPlayer = room.players.find(p => p.id === info.playerId);
-  room.players = room.players.filter(p => p.id !== info.playerId);
+  try {
+    const info = socketMap.get(ws);
+    if (!info) return;
+    const room = rooms.get(info.roomCode);
+    if (!room) return;
+    stopRoomTick(room);
+    const leavingPlayer = room.players.find(p => p.id === info.playerId);
+    room.players = room.players.filter(p => p.id !== info.playerId);
 
-  if (room.players.length === 0) {
-    rooms.delete(info.roomCode);
-  } else {
-    room.status = 'waiting';
-    broadcastToRoom(room, {
-      type: 'player_left',
-      message: `غادر ${leavingPlayer ? leavingPlayer.name : 'اللاعب'} الغرفة.`,
-      state: sanitizeRoomState(room),
-    });
+    if (room.players.length === 0) {
+      rooms.delete(info.roomCode);
+    } else {
+      room.status = 'waiting';
+      broadcastToRoom(room, {
+        type: 'player_left',
+        message: `غادر ${leavingPlayer ? leavingPlayer.name : 'اللاعب'} الغرفة.`,
+        state: sanitizeRoomState(room),
+      });
+    }
+  } catch (err) {
+    console.error('Error in handlePlayerDisconnect:', err);
   }
 }
 
@@ -363,5 +410,5 @@ app.get('*', (_req, res) => {
 
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 server.listen(port, '0.0.0.0', () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Protected Water Challenge Server running on port ${port}`);
 });
