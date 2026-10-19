@@ -160,7 +160,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     wCtx.fillRect(0, 0, 256, 256);
     wCtx.strokeStyle = '#1e293b';
     wCtx.lineWidth = 2;
-    // Subway tile grid
     for (let y = 0; y <= 256; y += 32) {
       wCtx.beginPath();
       wCtx.moveTo(0, y);
@@ -183,7 +182,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     wallTexture.repeat.set(6, 4);
 
     // --- 5. COMPOSITE KITCHEN ENVIRONMENT ---
-    // Countertop
     const counterGeo = new THREE.BoxGeometry(7, 0.4, 4);
     const counterMat = new THREE.MeshStandardMaterial({
       map: counterTexture,
@@ -195,7 +193,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     counterMesh.receiveShadow = true;
     scene.add(counterMesh);
 
-    // Stainless Steel Sink Basin
     const sinkGeo = new THREE.BoxGeometry(2.4, 0.15, 2.0);
     const sinkMat = new THREE.MeshStandardMaterial({
       color: 0x94a3b8,
@@ -207,7 +204,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     sinkMesh.receiveShadow = true;
     scene.add(sinkMesh);
 
-    // Sink Drain Strainer
     const drainGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.02, 24);
     const drainMat = new THREE.MeshStandardMaterial({
       color: 0x475569,
@@ -218,7 +214,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     drainMesh.position.set(0, 0.09, -0.4);
     scene.add(drainMesh);
 
-    // Kitchen Backsplash Wall
     const wallGeo = new THREE.PlaneGeometry(12, 6);
     const wallMat = new THREE.MeshStandardMaterial({
       map: wallTexture,
@@ -230,7 +225,7 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     wallMesh.receiveShadow = true;
     scene.add(wallMesh);
 
-    // --- 6. COMPOSITE CHROME FAUCET (6-PART PROCEDURAL GROUP) ---
+    // --- 6. COMPOSITE CHROME FAUCET ---
     const faucetGroup = new THREE.Group();
     faucetGroup.position.set(0, 0.08, -0.75);
 
@@ -240,21 +235,18 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
       roughness: 0.08,
     });
 
-    // 1. Base ring / flange
     const baseGeo = new THREE.CylinderGeometry(0.18, 0.2, 0.12, 32);
     const baseMesh = new THREE.Mesh(baseGeo, chromeMat);
     baseMesh.position.y = 0.06;
     baseMesh.castShadow = true;
     faucetGroup.add(baseMesh);
 
-    // 2. Vertical riser tube
     const riserGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.3, 32);
     const riserMesh = new THREE.Mesh(riserGeo, chromeMat);
     riserMesh.position.y = 0.72;
     riserMesh.castShadow = true;
     faucetGroup.add(riserMesh);
 
-    // 3. Arched Gooseneck Spout (CatmullRom Curve Tube)
     const curve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(0, 1.35, 0),
       new THREE.Vector3(0, 2.45, 0.08),
@@ -266,14 +258,12 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     gooseneckMesh.castShadow = true;
     faucetGroup.add(gooseneckMesh);
 
-    // 4. Aerator Head Nozzle
     const aeratorGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.18, 28);
     const aeratorMesh = new THREE.Mesh(aeratorGeo, chromeMat);
     aeratorMesh.position.set(0, 1.95, 0.75);
     aeratorMesh.castShadow = true;
     faucetGroup.add(aeratorMesh);
 
-    // Dark nozzle filter mesh
     const nozzleFaceGeo = new THREE.CircleGeometry(0.075, 20);
     const nozzleFaceMat = new THREE.MeshBasicMaterial({ color: 0x111827, side: THREE.DoubleSide });
     const nozzleFaceMesh = new THREE.Mesh(nozzleFaceGeo, nozzleFaceMat);
@@ -281,14 +271,12 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     nozzleFaceMesh.position.set(0, 1.86, 0.75);
     faucetGroup.add(nozzleFaceMesh);
 
-    // 5. Side Single-Lever Valve Handle Body
     const leverBaseGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.12, 24);
     const leverBaseMesh = new THREE.Mesh(leverBaseGeo, chromeMat);
     leverBaseMesh.rotation.z = Math.PI / 2;
     leverBaseMesh.position.set(0.12, 0.5, 0);
     faucetGroup.add(leverBaseMesh);
 
-    // 6. Rotating Single-Lever Handle
     const leverPivot = new THREE.Group();
     leverPivot.position.set(0.18, 0.5, 0);
 
@@ -298,7 +286,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     leverStickMesh.castShadow = true;
     leverPivot.add(leverStickMesh);
 
-    // Accent ball tip
     const leverBallGeo = new THREE.SphereGeometry(0.045, 16, 16);
     const leverBallMesh = new THREE.Mesh(leverBallGeo, chromeMat);
     leverBallMesh.position.y = 0.4;
@@ -306,15 +293,13 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
 
     faucetGroup.add(leverPivot);
     faucetLeverRef.current = leverPivot;
-
     scene.add(faucetGroup);
 
-    // --- 7. REALISTIC GLASS CUP (3-PART PROCEDURAL GROUP) ---
+    // --- 7. REALISTIC GLASS CUP ---
     const cupGroup = new THREE.Group();
-    // Positioned directly under faucet spout (x=0, z=0)
     cupGroup.position.set(0, 0.08, 0);
 
-    // Soft Radial Contact Shadow
+    // Soft Radial Contact Shadow (تم رفع الارتفاع لمنع الوشة والتداخل)
     const shadowGeo = new THREE.PlaneGeometry(1.4, 1.4);
     const shadowCanvas = document.createElement('canvas');
     shadowCanvas.width = 128;
@@ -335,10 +320,10 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     });
     const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
     shadowMesh.rotation.x = -Math.PI / 2;
-    shadowMesh.position.y = 0.005;
+    shadowMesh.position.y = 0.015; // مرتفعة قليلاً لتجنب Z-fighting
+    shadowMesh.renderOrder = 1;
     cupGroup.add(shadowMesh);
 
-    // High PBR Optical Glass Material
     const glassMat = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       transmission: 0.94,
@@ -355,20 +340,19 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
       depthWrite: false,
     });
 
-    // Outer Glass Profile (Lathe for curved base and flared rim)
     const glassPoints: THREE.Vector2[] = [
       new THREE.Vector2(0.0, 0.0),
-      new THREE.Vector2(0.38, 0.0),   // Thick flat weighted bottom
-      new THREE.Vector2(0.42, 0.08),  // Curved bottom bevel
+      new THREE.Vector2(0.38, 0.0),
+      new THREE.Vector2(0.42, 0.08),
       new THREE.Vector2(0.45, 0.4),
       new THREE.Vector2(0.5, 1.0),
-      new THREE.Vector2(0.53, 1.48),  // Subtle top rim flare
-      new THREE.Vector2(0.51, 1.49),  // Rounded lip
-      new THREE.Vector2(0.48, 1.48),  // Inner wall starts
+      new THREE.Vector2(0.53, 1.48),
+      new THREE.Vector2(0.51, 1.49),
+      new THREE.Vector2(0.48, 1.48),
       new THREE.Vector2(0.45, 1.0),
       new THREE.Vector2(0.4, 0.4),
       new THREE.Vector2(0.36, 0.12),
-      new THREE.Vector2(0.0, 0.12),   // Inner floor
+      new THREE.Vector2(0.0, 0.12),
     ];
     const glassGeo = new THREE.LatheGeometry(glassPoints, 36);
     const glassMesh = new THREE.Mesh(glassGeo, glassMat);
@@ -376,13 +360,10 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     glassMesh.receiveShadow = true;
     cupGroup.add(glassMesh);
 
-    // Internal Water Volume (Scales in height with waterLevel)
-    // Cup interior height is roughly 1.36 units (from y=0.12 to y=1.48)
     const maxWaterHeight = 1.34;
     const waterBaseY = 0.13;
 
     const waterGeo = new THREE.CylinderGeometry(0.48, 0.38, maxWaterHeight, 32, 1, false);
-    // Shift geometry anchor to bottom so scaling Y expands upwards!
     waterGeo.translate(0, maxWaterHeight / 2, 0);
 
     const waterMat = new THREE.MeshPhysicalMaterial({
@@ -392,7 +373,7 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
       opacity: 0.9,
       roughness: 0.08,
       metalness: 0.1,
-      ior: 1.333, // True index of refraction of water
+      ior: 1.333,
       attenuationColor: new THREE.Color(0x0284c7),
       attenuationDistance: 0.9,
     });
@@ -403,7 +384,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     cupGroup.add(waterMesh);
     waterMeshRef.current = waterMesh;
 
-    // Top Water Surface Disk with Meniscus
     const surfaceGeo = new THREE.CircleGeometry(0.47, 32);
     const surfaceMat = new THREE.MeshPhysicalMaterial({
       color: 0x7dd3fc,
@@ -423,7 +403,7 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
 
     scene.add(cupGroup);
 
-    // --- 8. REALISTIC WATER STREAM FROM FAUCET TO CUP ---
+    // --- 8. WATER STREAM ---
     const streamGeo = new THREE.CylinderGeometry(0.035, 0.045, 1.8, 16);
     const streamMat = new THREE.MeshPhysicalMaterial({
       color: 0xbae6fd,
@@ -435,14 +415,13 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
       clearcoat: 1.0,
     });
     const streamMesh = new THREE.Mesh(streamGeo, streamMat);
-    // Placed directly beneath the aerator nozzle (x=0, z=0, from y=1.86 down to cup)
     streamMesh.position.set(0, 1.0, 0);
     streamMesh.scale.set(1, 0.0001, 1);
     streamMesh.visible = false;
     scene.add(streamMesh);
     waterStreamRef.current = streamMesh;
 
-    // --- 9. SPLASH PARTICLES AT IMPACT POINT ---
+    // --- 9. SPLASH PARTICLES ---
     const particleCount = quality === 'low' ? 30 : quality === 'medium' ? 70 : 120;
     const splashGeo = new THREE.BufferGeometry();
     const splashPositions = new Float32Array(particleCount * 3);
@@ -453,7 +432,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
       splashPositions[i * 3 + 1] = 0;
       splashPositions[i * 3 + 2] = 0;
 
-      // Random radial velocity outward and upward
       const angle = Math.random() * Math.PI * 2;
       const speed = 0.5 + Math.random() * 0.9;
       splashVelocities[i * 3] = Math.cos(angle) * speed;
@@ -463,7 +441,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
 
     splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPositions, 3));
 
-    // Particle sprite
     const pCanvas = document.createElement('canvas');
     pCanvas.width = 64;
     pCanvas.height = 64;
@@ -490,7 +467,7 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     scene.add(splashParticles);
     splashParticlesRef.current = splashParticles;
 
-    // --- 10. OVERFLOW WATER CASCADE PARTICLES ---
+    // --- 10. OVERFLOW PARTICLES ---
     const overflowCount = quality === 'low' ? 60 : 150;
     const overflowGeo = new THREE.BufferGeometry();
     const overflowPositions = new Float32Array(overflowCount * 3);
@@ -498,13 +475,13 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
 
     for (let i = 0; i < overflowCount; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const r = 0.52; // At glass outer rim
+      const r = 0.52;
       overflowPositions[i * 3] = Math.cos(angle) * r;
       overflowPositions[i * 3 + 1] = 1.55;
       overflowPositions[i * 3 + 2] = Math.sin(angle) * r;
 
       overflowVelocities[i * 3] = Math.cos(angle) * (0.3 + Math.random() * 0.4);
-      overflowVelocities[i * 3 + 1] = -1.2 - Math.random() * 1.5; // Cascades downward
+      overflowVelocities[i * 3 + 1] = -1.2 - Math.random() * 1.5;
       overflowVelocities[i * 3 + 2] = Math.sin(angle) * (0.3 + Math.random() * 0.4);
     }
     overflowGeo.setAttribute('position', new THREE.BufferAttribute(overflowPositions, 3));
@@ -513,10 +490,9 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
     scene.add(overflowPoints);
     overflowParticlesRef.current = overflowPoints;
 
-    // Pre-warm WebGL shaders
     renderer.compile(scene, camera);
 
-    // --- 11. ANIMATION TICK LOOP WITH LOSSLESS 60FPS DAMPING ---
+    // --- 11. ANIMATION TICK LOOP ---
     let animationFrameId: number;
     let clock = new THREE.Clock();
 
@@ -525,7 +501,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
       const delta = Math.min(clock.getDelta(), 0.1);
       const elapsed = clock.getElapsedTime();
 
-      // When tap is open, damp smoothly; when tap is closed, freeze strictly to target logic level
       const targetLevel = targetWaterLevelRef.current;
       if (isTapOpenRef.current) {
         currentWaterLevelRef.current = THREE.MathUtils.damp(
@@ -535,27 +510,22 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
           delta
         );
       } else {
-        // Instant freeze when faucet is off
         currentWaterLevelRef.current = targetLevel;
       }
 
       const levelFraction = Math.max(0.0001, Math.min(1.0, currentWaterLevelRef.current / 100));
 
-      // 1. Update Water Volume Height inside cup
       if (waterMeshRef.current) {
         waterMeshRef.current.scale.y = levelFraction;
-        // Subtle water color tint shift as depth increases
         const meshMat = waterMeshRef.current.material as THREE.MeshPhysicalMaterial;
         meshMat.color.setHSL(0.55, 0.85, 0.65 - levelFraction * 0.15);
       }
 
-      // 2. Update Top Water Surface Meniscus
       const currentSurfaceY = waterBaseY + maxWaterHeight * levelFraction;
       if (waterSurfaceRef.current) {
         waterSurfaceRef.current.position.y = currentSurfaceY;
         waterSurfaceRef.current.visible = currentWaterLevelRef.current > 0.5;
 
-        // Subtle undulating water ripple wave ONLY while tap is actively pouring
         if (isTapOpenRef.current) {
           waterSurfaceRef.current.rotation.z = Math.sin(elapsed * 12) * 0.02;
           waterSurfaceRef.current.scale.setScalar(1.0 + Math.sin(elapsed * 15) * 0.03);
@@ -565,9 +535,7 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
         }
       }
 
-      // 3. Faucet Handle Valve Rotation Animation
       if (faucetLeverRef.current) {
-        // Rotates down by ~35 degrees when tap is open
         const targetRot = isTapOpenRef.current ? -0.6 : 0.0;
         faucetLeverRef.current.rotation.z = THREE.MathUtils.damp(
           faucetLeverRef.current.rotation.z,
@@ -577,12 +545,9 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
         );
       }
 
-      // 4. Water Stream Animation
       if (waterStreamRef.current) {
         if (isTapOpenRef.current) {
           waterStreamRef.current.visible = true;
-
-          // Stream extends from nozzle (y=1.86) down to current surface Y
           const nozzleY = 1.86;
           const streamLength = Math.max(0.1, nozzleY - currentSurfaceY);
           const streamCenterY = currentSurfaceY + streamLength / 2;
@@ -590,7 +555,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
           waterStreamRef.current.scale.y = streamLength / 1.8;
           waterStreamRef.current.position.y = streamCenterY;
 
-          // Flowing vibration wobble
           const wobble = 1.0 + Math.sin(elapsed * 35) * 0.06;
           waterStreamRef.current.scale.x = wobble;
           waterStreamRef.current.scale.z = wobble;
@@ -599,7 +563,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
         }
       }
 
-      // 5. Splash Particles Animation
       if (splashParticlesRef.current) {
         if (isTapOpenRef.current && currentWaterLevelRef.current > 1) {
           splashParticlesRef.current.visible = true;
@@ -611,7 +574,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
             positions[i * 3] += splashVelocities[i * 3] * delta * 0.5;
             positions[i * 3 + 2] += splashVelocities[i * 3 + 2] * delta * 0.5;
 
-            // Recycle particles
             if (positions[i * 3 + 1] > 0.35 || Math.random() < 0.08) {
               positions[i * 3] = (Math.random() - 0.5) * 0.08;
               positions[i * 3 + 1] = 0;
@@ -624,7 +586,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
         }
       }
 
-      // 6. Overflow Cascade Animation
       if (overflowParticlesRef.current) {
         if (isOverflowedRef.current) {
           overflowParticlesRef.current.visible = true;
@@ -634,7 +595,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
             pos[i * 3 + 1] += overflowVelocities[i * 3 + 1] * delta;
             pos[i * 3 + 2] += overflowVelocities[i * 3 + 2] * delta;
 
-            // If falls to sink counter, reset to rim
             if (pos[i * 3 + 1] < 0.08) {
               const angle = Math.random() * Math.PI * 2;
               const r = 0.52 + Math.random() * 0.06;
@@ -649,13 +609,10 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
         }
       }
 
-      // 7. Cinematic Damped Camera & Tension Zoom
       if (cameraRef.current) {
-        // Dramatic close-up zoom during critical high-water tension (> 75%)
         const targetCamZ = isTenseRef.current || currentWaterLevelRef.current > 75 ? 3.4 : 4.2;
         const targetCamY = isTenseRef.current || currentWaterLevelRef.current > 75 ? 2.1 : 2.6;
 
-        // Subtle ambient breathing float
         const breathX = Math.sin(elapsed * 0.6) * 0.08;
         const breathY = Math.cos(elapsed * 0.8) * 0.04;
 
@@ -672,7 +629,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
 
     render();
 
-    // Resize handling
     const handleResize = () => {
       if (!container || !cameraRef.current || !rendererRef.current) return;
       const newW = container.clientWidth || window.innerWidth;
@@ -688,7 +644,6 @@ export const KitchenScene: React.FC<KitchenSceneProps> = ({
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
 
-      // Clean disposal
       renderer.dispose();
       counterTexture.dispose();
       wallTexture.dispose();
