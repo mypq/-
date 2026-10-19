@@ -149,14 +149,12 @@ function startRound(room: GameRoom) {
   room.state.isOverflowed = false;
   room.state.winnerPlayerId = null;
   room.state.loserPlayerId = null;
-  room.state.flowRate = 12.5; // Smooth realistic flow rate: fills 0 to 100% in ~8 seconds continuous
+  room.state.flowRate = 12.5;
   room.state.countdown = null;
 
-  // Decide who starts: alternate or pick player 1
   if (!room.state.currentTurnPlayerId || room.state.roundNumber === 1) {
     room.state.currentTurnPlayerId = room.players[0].id;
   } else {
-    // Alternate starter each round
     const otherPlayer = room.players.find(p => p.id !== room.state.currentTurnPlayerId);
     room.state.currentTurnPlayerId = otherPlayer ? otherPlayer.id : room.players[0].id;
   }
@@ -200,7 +198,6 @@ async function startServer() {
   const app = express();
   app.use(express.json());
 
-  // Health and stats
   app.get('/api/health', (_req, res) => {
     let totalPlayers = 0;
     for (const r of rooms.values()) {
@@ -214,7 +211,6 @@ async function startServer() {
     });
   });
 
-  // Open public waiting rooms for joining
   app.get('/api/rooms/open', (_req, res) => {
     const openRooms = [];
     for (const r of rooms.values()) {
@@ -232,7 +228,6 @@ async function startServer() {
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server });
 
-  // Map WS to player session info
   const socketMap = new WeakMap<WebSocket, { roomCode: string; playerId: string }>();
 
   wss.on('connection', (ws) => {
@@ -318,7 +313,6 @@ async function startServer() {
           const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
           const existingHost = room.players[0];
 
-          // Avoid identical display names causing confusion
           let finalName = playerName;
           if (finalName.toLowerCase() === existingHost.name.toLowerCase()) {
             finalName = `${finalName} (2)`;
@@ -353,7 +347,6 @@ async function startServer() {
             state: sanitizeRoomState(room),
           });
 
-          // Trigger countdown after both players are connected and ready
           setTimeout(() => {
             if (room.players.length === 2 && room.status === 'ready') {
               triggerCountdown(room);
@@ -362,7 +355,6 @@ async function startServer() {
           return;
         }
 
-        // Gameplay actions: tap_start, tap_stop, rematch, leave
         const info = socketMap.get(ws);
         if (!info) return;
 
@@ -371,8 +363,8 @@ async function startServer() {
 
         if (type === 'tap_start') {
           if (room.status !== 'playing') return;
-          if (room.state.currentTurnPlayerId !== info.playerId) return; // not your turn
-          if (room.state.isTapOpen) return; // already open
+          if (room.state.currentTurnPlayerId !== info.playerId) return;
+          if (room.state.isTapOpen) return;
 
           room.state.isTapOpen = true;
           room.state.tapOpenedAt = Date.now();
@@ -403,7 +395,6 @@ async function startServer() {
           room.state.isTapOpen = false;
           room.state.tapOpenedAt = null;
 
-          // Switch turn to opponent!
           const opponent = room.players.find(p => p.id !== info.playerId);
           if (opponent) {
             room.state.currentTurnPlayerId = opponent.id;
@@ -466,7 +457,6 @@ async function startServer() {
 
     stopRoomTick(room);
 
-    // Remove player
     const leavingPlayer = room.players.find(p => p.id === info.playerId);
     room.players = room.players.filter(p => p.id !== info.playerId);
 
@@ -482,21 +472,11 @@ async function startServer() {
     }
   }
 
-  // Setup Vite in development or static serve in production
-  const isProd = process.env.NODE_ENV === 'production';
-  if (!isProd) {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static(path.join(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-    });
-  }
+  // Serve static files in production / deployment
+  app.use(express.static(path.join(__dirname, 'dist')));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
 
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   server.listen(port, '0.0.0.0', () => {
